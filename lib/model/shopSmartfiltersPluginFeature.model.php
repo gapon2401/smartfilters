@@ -5,15 +5,24 @@ class shopSmartfiltersPluginFeatureModel extends shopFeatureModel
     private $category_id;
     private $product_ids;
     private $features;
+    private $sf_available;
+    private $max_count;
 
     public function getByCategoryId($category_id)
     {
+        /**
+         * @var shopSmartfiltersPlugin $plugin
+         */
+        $plugin = wa('shop')->getPlugin('smartfilters');
         $this->category_id = (int)$category_id;
+        $this->max_count = (int) $plugin->getSettings('max_count');
         $filters = $this->getPossibleFilterValues();
 
         if ($data = waRequest::get()) {
+            $this->sf_available = $plugin->getSfAvailable();
+
             foreach ($filters as $code => &$filter) {
-                if($code == 'price') continue;
+                if(in_array($code, array('price', 'sf_available'))) continue;
                 $enabledFilters = $this->getEnabledFilters($code, $data);
 
                 if ($enabledFilters === false) {
@@ -39,12 +48,17 @@ class shopSmartfiltersPluginFeatureModel extends shopFeatureModel
             return array();
         }
 
-        $collection = new shopProductsCollection('category/'.$category['id']);
-        $this->product_ids = array_keys($collection->getProducts('id,price,compare_price,currency', 0, 1000));
+        $collection = new shopProductsCollection('category/'.$category['id'], array(
+            'skip_smartfilters' => true
+        ));
 
-        if (!$this->product_ids) {
+        $count = $collection->count();
+        if (!$count) {
             return array();
         }
+        $limit = $this->max_count > 0 ? $this->max_count : $count;
+        $products = $collection->getProducts('id,price,compare_price,currency', 0, $limit);
+        $this->product_ids = array_keys($products);
 
         static $order;
         if($order === null) {
@@ -71,10 +85,16 @@ class shopSmartfiltersPluginFeatureModel extends shopFeatureModel
                         'max' => shop_currency($range['max'], null, null, false),
                     );
                 }
+            } elseif ($fid == 'sf_available') {
+                $filters[$fid] = array(
+                    'type' => $fid,
+                    'code' => $fid,
+                    'name' => _wp('In stock'),
+                    'values' => array(
+                        1 => _wp('Only available')
+                    )
+                );
             } elseif (isset($features[$fid]) && isset($category_value_ids[$fid])) {
-                if(!empty($filter_names[$k])) {
-                    $features[$fid]['name'] = $filter_names[$k];
-                }
                 $code = $features[$fid]['code'];
                 $this->features[$code] = $features[$fid];
                 $filters[$code] = $features[$fid];
@@ -139,6 +159,9 @@ class shopSmartfiltersPluginFeatureModel extends shopFeatureModel
                     }
                 }
             }
+            if(!empty($filter_names[$k]) && !empty($filters[$fid])) {
+                $filters[$fid]['name'] = $filter_names[$k];
+            }
         }
         return $filters;
     }
@@ -163,11 +186,16 @@ class shopSmartfiltersPluginFeatureModel extends shopFeatureModel
 
     public function getEnabledFilters($key, $data)
     {
+
         $delete = array('page', 'sort', 'order', $key);
         foreach ($delete as $k) {
             if (isset($data[$k])) {
                 unset($data[$k]);
             }
+        }
+
+        if(!$this->product_ids) {
+            return false;
         }
 
         if (!count($data)) {
@@ -187,15 +215,16 @@ class shopSmartfiltersPluginFeatureModel extends shopFeatureModel
         }
         $feature_join_index = 0;
 
+        if($this->sf_available) {
+            $where[] = '(p.count > 0 OR p.count IS NULL)';
+        }
+
         foreach ($data as $feature_code => $values) {
             if (!is_array($values)) {
                 $values = array($values);
             }
 
-
             if (isset($this->features[$feature_code])) {
-
-
                 if (isset($values['min']) || isset($values['max']) || isset($values['unit'])) {
                     if (ifset($values['min'], '') === '' && ifset($values['max'], '') === '') {
                         continue;
@@ -230,7 +259,7 @@ class shopSmartfiltersPluginFeatureModel extends shopFeatureModel
                     $feature_join_index++;
 
                     $joins[] = sprintf(
-                        " LEFT JOIN %s %s ON %s",
+                        " JOIN %s %s ON %s",
                         'shop_product_features',
                         'filter' . $feature_join_index,
                         'p.id = filter' . $feature_join_index . '.product_id AND ' .
@@ -239,10 +268,6 @@ class shopSmartfiltersPluginFeatureModel extends shopFeatureModel
                     $where[] = 'filter' . $feature_join_index . ".feature_value_id IN (" . implode(',', $values) . ")";
                 }
             }
-        }
-
-        if (!$feature_join_index) {
-            return true;
         }
 
         $where[] = 'p.id IN (:product_ids)';
@@ -254,11 +279,24 @@ class shopSmartfiltersPluginFeatureModel extends shopFeatureModel
             return false;
         }
 
-        $sql = "SELECT DISTINCT feature_value_id FROM shop_product_features WHERE product_id IN(:product_ids) AND feature_id = :feature_id";
-        $res = $this->query($sql, array('product_ids' => $product_ids, 'feature_id' => (int)$this->features[$key]['id']))
+        if($this->sf_available) {
+            $sql = 'SELECT DISTINCT f.feature_value_id FROM shop_product_features f '.
+                'LEFT JOIN shop_product_skus s ON s.id = f.sku_id '.
+                'WHERE f.product_id IN(:product_ids) AND f.feature_id = :feature_id AND (s.count IS NULL OR  s.count > 0)';
+        } else {
+            $sql = 'SELECT DISTINCT feature_value_id FROM shop_product_features '.
+                'WHERE product_id IN(:product_ids) AND feature_id = :feature_id';
+        }
+
+        $res = $this
+            ->query($sql, array(
+                'product_ids' => $product_ids,
+                'feature_id' => (int)$this->features[$key]['id']
+            ))
             ->fetchAll(null, true);
 
         $res = array_map('intval', $res);
+
         return $res;
     }
 }
