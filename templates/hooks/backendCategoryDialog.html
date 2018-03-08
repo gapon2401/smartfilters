@@ -33,8 +33,9 @@
                     <li class="smartfilters-item" style="display: none">
                         <i class="icon16 sort"></i>
                         <label>
-                            <input type="checkbox" name="smartfilters[]" value="{$feature.id}"{if !empty($feature.checked) || ($feature.id == 'price' && !$allow_smartfilters)} checked{/if}>
-                            <input type="text" name="smartfilters_name[]" value="{ifempty($smartfilters_name[$feature.id])|escape}" placeholder="{$feature.name|escape}">
+                            {$checked = !empty($feature.checked) || ($feature.id == 'price' && !$allow_smartfilters)}
+                            <input type="checkbox" name="smartfilters[]" value="{$feature.id}"{if $checked} checked{/if}>
+                            <input type="text" value="{ifempty($smartfilters_name[$feature.id])|escape}" placeholder="{$feature.name|escape}"{if $checked} name="smartfilters_name[]" {else} disabled{/if}>
                             <span class="hint">{$feature.code|default:''}</span>
                         </label>
                     </li>
@@ -83,7 +84,7 @@ $(function () {
     $('[data-check]', $scf).click(function(e){
         e.preventDefault();
         $(this).closest('ul').find('.smartfilters-item :checkbox').prop('checked',!!$(this).data('check'));
-    })
+    });
 
     $('[data-show]', $scf).click(function(e){
         e.preventDefault();

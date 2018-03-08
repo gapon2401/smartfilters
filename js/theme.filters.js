@@ -63,6 +63,11 @@
         function bindAjax() {
             if(!$(d).data('smartfilters-event')) {
                 $(d).data('smartfilters-event', function (e, r, settings) {
+					/* @todo check r content type??? don't parse JS... or match "data-smartfilters-data" */
+                    if(!/data-smartfilters-data/.test(r.responseText)) {
+                        return;
+                    }
+
                     var $d = $('<div>').html(r.responseText),
                         f = $d.find('[data-smartfilters-data]:first');
 

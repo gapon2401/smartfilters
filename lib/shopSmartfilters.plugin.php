@@ -20,8 +20,11 @@ class shopSmartfiltersPlugin extends shopPlugin {
      */
     public static function get($category_id)
     {
-        if(wa('shop')->getPlugin('smartfilters')->getSettings('enabled') === self::DISPLAY_HELPER) {
-            return self::display($category_id);
+        try {
+            if(wa('shop')->getPlugin('smartfilters')->getSettings('enabled') === self::DISPLAY_HELPER) {
+                return self::display($category_id);
+            }
+        } catch (waException $e) {
         }
         return '';
     }
@@ -40,25 +43,48 @@ class shopSmartfiltersPlugin extends shopPlugin {
         if(!isset($filters[$category_id])) {
             $feature_model = new shopSmartfiltersPluginFeatureModel();
             $filters[$category_id] = $feature_model->getByCategoryId($category_id);
+            shopSmartfiltersPluginMylangFilters::prepare($filters[$category_id]);
         }
 
         return ifempty($filters[$category_id], array());
     }
 
+    public static function getSpoiler()
+    {
+        $collection_file = wa()->getAppPath('lib/classes/shopProductsCollection.class.php', 'shop');
+        if(!file_exists($collection_file) || !is_readable($collection_file)) {
+            return '';
+        }
+
+        $content = file_get_contents($collection_file);
+        if(preg_match('/products_collection\.filter/', $content)) {
+            return '';
+        }
+
+        $file = wa('shop')->getAppPath('plugins/smartfilters/templates/spoiler.html');
+        return file_get_contents($file);
+    }
+
     /**
      * Хелпер для вывода JS в category.html
+     * Нужен, если хук frontend_category не подгружается аяксом.
      *
      * @param $category_id
      * @return string
      */
     public static function categoryTheme($category_id)
     {
-        if($filters = self::getFiltersForCategory($category_id)) {
+        if(!$filters = self::getFiltersForCategory($category_id)) {
+            return '';
+        }
+        try {
+
             $view = wa()->getView();
             $view->assign('filters', $filters); // rewrite default var
             $plugin = wa('shop')->getPlugin('smartfilters');
             $view->assign('smartfilters', $plugin->getSettings());
             return $view->fetch($plugin->path.'/templates/hooks/frontendCategoryTheme.html');
+        } catch (Exception $e) {
         }
 
         return '';
@@ -96,22 +122,27 @@ class shopSmartfiltersPlugin extends shopPlugin {
      */
     public function frontendCategory($category)
     {
-        $enabled = $this->getSettings('enabled');
+        if(!$enabled = $this->getSettings('enabled')) {
+            return '';
+        }
 
-        if($enabled && ($feature_code = $this->getSettings('color_feature'))) {
-            if(preg_match('/'.$feature_code.'.value_id=(\d+)(&|$)/', $category['conditions'], $matches)) {
-                $view = wa()->getView();
-                $products = $view->getVars('products');
-                $this->prepareProductPhotos($matches[1], $products);
-                $view->assign('products', $products);
-            }
+        $result = '';
+
+        if ($enabled === self::DISPLAY_TEMPLATE) {
+            $result = self::display($category['id']);
+        } elseif ($enabled === self::DISPLAY_THEME) {
+            $result = self::categoryTheme($category['id']);
         }
-        if($enabled === self::DISPLAY_TEMPLATE) {
-            return self::display($category['id']);
-        } elseif($enabled === self::DISPLAY_THEME) {
-            return self::categoryTheme($category['id']);
+
+        if ($this->getSettings('color_change')) {
+
+            $view = wa('shop')->getView();
+            $products = $view->getVars('products');
+
+
         }
-        return '';
+
+        return $result;
     }
 
     /**
@@ -206,6 +237,7 @@ class shopSmartfiltersPlugin extends shopPlugin {
 
     public function frontendProducts($params)
     {
+        return;
         $feature_code = $this->getSettings('color_feature');
         $color = waRequest::get($feature_code, array(), waRequest::TYPE_ARRAY_INT);
         if($color && !empty($params['products'])) {
@@ -261,6 +293,11 @@ class shopSmartfiltersPlugin extends shopPlugin {
         return '';
     }
 
+    /**
+     * @deprecated use shopSmartfiltersPluginPrepareProducts instead
+     * @param $color
+     * @param $products
+     */
     private function prepareProductPhotos($color, &$products)
     {
         if(empty($products)) {

@@ -77,6 +77,7 @@ class shopSmartfiltersPluginFeatureModel extends shopFeatureModel
         $filters = array();
         $this->features = array();
         foreach ($filter_ids as $k => $fid) {
+            $code = $fid;
             if ($fid == 'price') {
                 $range = $collection->getPriceRange();
                 if ($range['min'] != $range['max']) {
@@ -159,8 +160,9 @@ class shopSmartfiltersPluginFeatureModel extends shopFeatureModel
                     }
                 }
             }
-            if(!empty($filter_names[$k]) && !empty($filters[$fid])) {
-                $filters[$fid]['name'] = $filter_names[$k];
+
+            if(!empty($filter_names[$k]) && !empty($filters[$code])) {
+                $filters[$code]['name'] = $filter_names[$k];
             }
         }
         return $filters;
@@ -221,6 +223,10 @@ class shopSmartfiltersPluginFeatureModel extends shopFeatureModel
 
         foreach ($data as $feature_code => $values) {
             if (!is_array($values)) {
+                if($values === '') {
+                    echo '<!-- ', $feature_code, '-->';
+                    continue; // skip "Не важно"
+                }
                 $values = array($values);
             }
 
@@ -274,7 +280,6 @@ class shopSmartfiltersPluginFeatureModel extends shopFeatureModel
         $sql = "SELECT p.id FROM shop_product p " . implode('', $joins) . " WHERE " . implode(' AND ', $where) . " GROUP BY p.id";
 
         $product_ids = $this->query($sql, array('product_ids' => $this->product_ids))->fetchAll(null, true);
-
         if (!$product_ids) {
             return false;
         }
