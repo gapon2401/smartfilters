@@ -185,7 +185,7 @@ class shopSmartfiltersPluginPrepareProducts
             } else {
                 $fvalues = waRequest::get($f['code']);
                 if ($fvalues && !isset($fvalues['min']) && !isset($fvalues['max'])) {
-                    $tmp[$fid] = $fvalues;
+                    $tmp[$f['id']] = $fvalues;
                 }
             }
         }

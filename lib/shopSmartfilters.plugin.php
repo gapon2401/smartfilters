@@ -134,12 +134,15 @@ class shopSmartfiltersPlugin extends shopPlugin {
             $result = self::categoryTheme($category['id']);
         }
 
-        if ($this->getSettings('color_change')) {
+        $filters = self::getFiltersForCategory($category['id']);
+        if ($filters && $this->getSettings('color_change')) {
 
             $view = wa('shop')->getView();
             $products = $view->getVars('products');
 
-
+            $p = new shopSmartfiltersPluginPrepareProducts();
+            $products = $p->prepare($products, $filters);
+            $view->assign('products', $products);
         }
 
         return $result;
