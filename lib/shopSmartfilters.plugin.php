@@ -207,6 +207,9 @@ class shopSmartfiltersPlugin extends shopPlugin {
     public function categorySave(&$data)
     {
         if(!empty($data['id'])) {
+            if(!waRequest::post('smartfilters')) {
+                return;
+            }
             if (waRequest::post('allow_smartfilters')) {
                 $smartfilters = implode(',', waRequest::post('smartfilters'));
                 $smartfilters_name = implode(',', waRequest::post('smartfilters_name'));
