@@ -9,8 +9,10 @@
         }, _options);
         that.$form = findForm();
         if(that.$form) {
-            disableFilters();
-            bindAjax();
+            setTimeout(function() {
+                disableFilters();
+                bindAjax();
+            }, 1000);
         } else {
             log('$.smartfiltersTheme fail: form not found');
         }
@@ -44,7 +46,7 @@
                                 !v.values.hasOwnProperty(i)
                             ;
 
-                            $field.prop('disabled', disabled);
+                            $field.prop('disabled', disabled).trigger('refresh');
                             a = disabled ? 'add' : 'remove';
                             $field.closest(that.o.parentLabelSelector)[a+'Class']('sf-label-disabled');
                         });
@@ -52,7 +54,7 @@
                         a = $fields.filter(':not(:disabled)').length ? 'remove' : 'add';
                         $param[a+'Class']('sf-param-disabled');
                     } else {
-                        $fields.prop('disabled', false);
+                        $fields.prop('disabled', false).trigger('refresh');
                         $fields.closest(that.o.parentLabelSelector).removeClass('sf-label-disabled');
                         $param.removeClass('sf-param-disabled');
                     }
@@ -62,34 +64,21 @@
                     $min = that.$form.find('input[name="' + name + (name !== 'price' ? '[min]' : '_min') + '"]');
                     $max = that.$form.find('input[name="' + name + (name !== 'price' ? '[max]' : '_max') + '"]');
 
-                    /*
-                    if($min.length && v.hasOwnProperty('nmin')) {
-                        v.nmin = Math.floor(v.nmin);
-
-                        $param = $min.closest(that.o.parentParamSelector);
-
-                        $slider = $param.find('.ui-slider');
-                        try {
-                            if ($slider.length) {
-                                values = $slider.slider('option', 'values');
-                                $slider.slider('option', 'values', [v.nmin, values[1]]);
-                                $min.val('').prop('placeholder', v.nmin);
-                            }
-                        } catch (ex) {
-                            log(ex);
-                        }
-                    }*/
-
-
                     if(v.hasOwnProperty('nmin') && v.hasOwnProperty('nmax')) {
                         v.nmin = Math.floor(v.nmin);
                         v.nmax = Math.ceil(v.nmax);
 
                         $param = $max.closest(that.o.parentParamSelector);
 
+                        /* jQuery UI */
                         $slider = $param.find('.ui-slider');
-                        try {
-                            if ($slider.length) {
+
+                        if(name === 'price') {
+                            log($param);
+                            log('$slider.length ' + $slider.length);
+                        }
+                        if ($slider.length) {
+                            try {
                                 values = $slider.slider('option', 'values');
                                 $min.prop('placeholder', v.nmin);
                                 $max.prop('placeholder', v.nmax);
@@ -120,9 +109,9 @@
                                     values[1] = v.nmax;
                                 }
                                 $slider.slider('option', 'values', values);
+                            } catch (ex) {
+                                log(ex);
                             }
-                        } catch (ex) {
-                            log(ex);
                         }
                     }
 
@@ -130,7 +119,6 @@
                 }
                 else if(($fields = that.$form.find('select[name="' + name + '[]"]')) && $fields.length)
                 {
-                    console.log(name);
                     $param = $fields.closest(that.o.parentParamSelector);
 
                     $fields = $fields.find('option');
@@ -145,7 +133,7 @@
                                 !v.values.hasOwnProperty(i)
                             ;
 
-                            $field.prop('disabled', disabled);
+                            $field.prop('disabled', disabled).trigger('refresh');
                             //a = disabled ? 'add' : 'remove';
                             //$field.closest(that.o.parentLabelSelector)[a+'Class']('sf-label-disabled');
                         });
@@ -153,7 +141,7 @@
                         a = $fields.filter(':not(:disabled)').length ? 'remove' : 'add';
                         $param[a+'Class']('sf-param-disabled');
                     } else {
-                        $fields.prop('disabled', false);
+                        $fields.prop('disabled', false).trigger('refresh');
                         //$fields.closest(that.o.parentLabelSelector).removeClass('sf-label-disabled');
                         $param.removeClass('sf-param-disabled');
                     }

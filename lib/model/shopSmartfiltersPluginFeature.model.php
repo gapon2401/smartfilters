@@ -22,6 +22,10 @@ class shopSmartfiltersPluginFeatureModel extends shopFeatureModel
             $this->sf_available = $plugin->getSfAvailable();
 
             foreach ($filters as $code => &$filter) {
+                if($code == 'price') {
+                    //$filter['nmin'] = 2400;
+                    //$filter['nmax'] = 2500;
+                }
                 if(in_array($code, array('price', 'sf_available'))) continue;
                 $enabledFilters = $this->getEnabledFilters($code, $data);
 
@@ -38,11 +42,12 @@ class shopSmartfiltersPluginFeatureModel extends shopFeatureModel
                         $filter['disabled'][$val_id] = in_array($val_id, $enabledFilters) ? false : true;
                         if(!$filter['disabled'][$val_id]) {
                             $new_minmax = true;
+                            $_val = is_object($val) ? $val->value : $val;
                             if($min !== null) {
-                                $min = min($min, $val);
+                                $min = min($min, $_val);
                             }
                             if($max !== null) {
-                                $max = max($max, $val);
+                                $max = max($max, $_val);
 
                             }
                         }
@@ -247,7 +252,6 @@ class shopSmartfiltersPluginFeatureModel extends shopFeatureModel
         foreach ($data as $feature_code => $values) {
             if (!is_array($values)) {
                 if($values === '') {
-                    echo '<!-- ', $feature_code, '-->';
                     continue; // skip "Не важно"
                 }
                 $values = array($values);
@@ -312,8 +316,10 @@ class shopSmartfiltersPluginFeatureModel extends shopFeatureModel
                 'LEFT JOIN shop_product_skus s ON s.id = f.sku_id '.
                 'WHERE f.product_id IN(:product_ids) AND f.feature_id = :feature_id AND (s.count IS NULL OR  s.count > 0)';
         } else {
-            $sql = 'SELECT DISTINCT feature_value_id FROM shop_product_features '.
-                'WHERE product_id IN(:product_ids) AND feature_id = :feature_id';
+            // @todo проверить ситуацию, когда значение присвоено только товару с артикулами, недоступными для заказа.
+            $sql = 'SELECT DISTINCT feature_value_id FROM shop_product_features pf '.
+                'JOIN shop_product_skus sp ON sp.product_id = pf.product_id '.
+                'WHERE pf.product_id IN(:product_ids) AND pf.feature_id = :feature_id AND sp.available = 1';
         }
 
         $res = $this

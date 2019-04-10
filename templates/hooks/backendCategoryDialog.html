@@ -83,7 +83,8 @@ $(function () {
 
     $('[data-check]', $scf).click(function(e){
         e.preventDefault();
-        $(this).closest('ul').find('.smartfilters-item :checkbox').prop('checked',!!$(this).data('check'));
+        $(this).closest('ul').find('.smartfilters-item :checkbox')
+            .prop('checked',!!$(this).data('check'));
     });
 
     $('[data-show]', $scf).click(function(e){
