@@ -49,21 +49,6 @@ class shopSmartfiltersPlugin extends shopPlugin {
         return ifempty($filters[$category_id], array());
     }
 
-    public static function getSpoiler()
-    {
-        $collection_file = wa()->getAppPath('lib/classes/shopProductsCollection.class.php', 'shop');
-        if(!file_exists($collection_file) || !is_readable($collection_file)) {
-            return '';
-        }
-
-        $content = file_get_contents($collection_file);
-        if(preg_match('/products_collection\.filter/', $content)) {
-            return '';
-        }
-
-        $file = wa('shop')->getAppPath('plugins/smartfilters/templates/spoiler.html');
-        return file_get_contents($file);
-    }
 
     /**
      * Хелпер для вывода JS в category.html
