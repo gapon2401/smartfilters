@@ -139,51 +139,8 @@ class shopSmartfiltersPlugin extends shopPlugin {
      */
     public function backendCategoryDialog($settings)
     {
-
-        $feature_model = new shopFeatureModel();
-        $selectable_and_boolean_features = $feature_model
-            ->select('*')
-            ->where("(selectable=1 OR type='boolean' OR type='double' OR type LIKE 'dimension\.%' OR ".
-                "type LIKE 'range\.%') AND parent_id IS NULL")
-            ->fetchAll('id');
-        $filter = $settings['smartfilters'] !== null ? explode(',', $settings['smartfilters']) : null;
-        $feature_filter = array();
-        $features['price'] = array(
-            'id' => 'price',
-            'name' => _wp('Price')
-        );
-        $features['sf_available'] = array(
-            'id' => 'sf_available',
-            'name' => _wp('In stock')
-        );
-        $features += $selectable_and_boolean_features;
-
-        $_smartfilters_name = $settings['smartfilters_name'] !== null ?
-            explode(',', $settings['smartfilters_name']) : array();
-
-        $smartfilters_name = array();
-        if (!empty($filter)) {
-            foreach ($filter as $k => $feature_id) {
-                $smartfilters_name[$feature_id] = ifempty($_smartfilters_name[$k]);
-                $feature_id = trim($feature_id);
-                if (isset($features[$feature_id])) {
-                    $feature_filter[$feature_id] = $features[$feature_id];
-                    $feature_filter[$feature_id]['checked'] = true;
-                    unset($features[$feature_id]);
-                }
-            }
-        }
-        $data = array(
-            'allow_smartfilters' => (bool)$filter,
-            'smartfilters' => $feature_filter + $features,
-            'smartfilters_name' => $smartfilters_name
-        );
-
-
-        $view = wa()->getView();
-        $view->assign($data);
-
-        return $view->fetch($this->path.'/templates/hooks/backendCategoryDialog.html');
+        $handler = new shopSmartfiltersPluginBackendCategoryDialogHandler($settings);
+        return $handler->execute();
     }
 
     /**
